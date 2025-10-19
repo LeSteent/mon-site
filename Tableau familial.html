@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tableau travaux familial</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121821; --muted:#77839a; --ink:#e9eef7; --primary:#5cc8ff; --accent:#8ef6c8; --warn:#ffb84d; --danger:#ff6b6b;
+      --shadow: 0 10px 20px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.25);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0b0f14,#0f1520);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:16px clamp(12px,3vw,28px);position:sticky;top:0;background:rgba(11,15,20,.8);backdrop-filter:blur(8px);border-bottom:1px solid #1e2736;z-index:10}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));box-shadow:var(--shadow)}
+    .title{font-weight:800;letter-spacing:.2px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+    button,.chip,select,input[type="date"],input[type="text"],.file-btn{border:1px solid #273144;background:#0f1520;color:var(--ink);padding:10px 12px;border-radius:12px;font-weight:600}
+    button{cursor:pointer;transition:.15s transform ease,.15s background ease, .15s border-color ease}
+    button:hover{transform:translateY(-1px);border-color:#3a4861}
+    .primary{background:linear-gradient(135deg,#2b76ff,#6af7d6);color:#041220;border:0}
+    .ghost{background:#0f1520}
+    .danger{background:#2a1111;border-color:#4a1d1d;color:#ff9a9a}
+    .content{padding:16px clamp(12px,3vw,28px);display:grid;gap:16px;grid-template-columns:1.2fr .8fr}
+    @media (max-width:1024px){.content{grid-template-columns:1fr}}
+
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(2,1fr)}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+    .card{background:linear-gradient(180deg,#101724,#0b111a);border:1px solid #1f2a3b;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card h3{margin:0;padding:14px 16px;border-bottom:1px solid #1f2a3b;font-size:16px;display:flex;align-items:center;gap:8px}
+    .card .body{padding:14px}
+
+    .matrix{display:grid;grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr;gap:16px}
+    .quadrant{min-height:220px;display:flex;flex-direction:column}
+    .qhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:700;color:var(--muted)}
+    .qdrop{flex:1;border:1px dashed #2a3b54;border-radius:14px;padding:8px;display:grid;gap:8px;grid-auto-rows:min-content;overflow:auto}
+
+    .task{background:#0e1420;border:1px solid #203048;border-radius:12px;padding:10px;display:grid;gap:6px}
+    .task.dragging{opacity:.6}
+    .task h4{margin:0;font-size:14px}
+    .meta{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+    .badge{padding:3px 8px;border-radius:999px;border:1px solid #2b3a55}
+    .assignee{border-color:#37507d}
+    .due{border-color:#5a3f2c}
+    .materials{border-color:#3c4e3a}
+
+    .lists{display:grid;gap:16px}
+
+    .empty{color:#65718a;font-style:italic}
+
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .row > *{flex:1 1 220px}
+
+    .search{flex:2}
+
+    dialog{border:1px solid #2a3a5c;background:#0e1522;color:var(--ink);border-radius:16px;box-shadow:var(--shadow);width:min(560px,92vw)}
+    dialog::backdrop{background:rgba(0,0,0,.55)}
+    form label{display:block;margin:10px 0 6px;color:#9fb0cf;font-weight:600}
+    form input, form textarea, form select{width:100%;background:#0b111a;border:1px solid #21314d;border-radius:10px;color:var(--ink);padding:10px}
+    form textarea{min-height:80px}
+    .grid-2{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+
+    .hint{color:#92a0bb;font-size:12px}
+
+    .footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid #2e3b55;color:#b9c7e4;background:#0b1220}
+
+    .small{font-size:12px}
+
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div class="title">Tableau travaux familial</div>
+    </div>
+    <div class="toolbar">
+      <button class="primary" id="btnNew">+ Nouvelle tâche</button>
+      <button class="ghost" id="btnExport">Exporter JSON</button>
+      <label class="file-btn" for="importFile" title="Importer depuis un fichier JSON" style="cursor:pointer;display:inline-flex;gap:8px;align-items:center">📥 Importer
+        <input id="importFile" type="file" accept="application/json" style="display:none" />
+      </label>
+      <button class="ghost" id="btnShare">🔗 Copier lien partage</button>
+      <button class="danger" id="btnClear">🗑️ Vider (local)</button>
+    </div>
+  </header>
+
+  <section class="content">
+    <div class="left">
+      <div class="card">
+        <h3>Eisenhower – Urgent / Important</h3>
+        <div class="body">
+          <div class="row">
+            <input id="search" class="search" type="text" placeholder="Rechercher… (titre, lieu, personne, matériaux)" />
+            <select id="filterAssignee">
+              <option value="">Filtrer: personne</option>
+            </select>
+            <input id="filterPlace" type="text" placeholder="Filtrer: lieu (optionnel)" />
+          </div>
+
+          <div class="matrix" style="margin-top:12px">
+            <div class="quadrant" data-q="UI">
+              <div class="qhead">🔥⚠️ Urgent & Important</div>
+              <div class="qdrop" id="q-UI" data-accept="UI"></div>
+            </div>
+            <div class="quadrant" data-q="uI">
+              <div class="qhead">⏰ Urgent & Pas important</div>
+              <div class="qdrop" id="q-uI" data-accept="uI"></div>
+            </div>
+            <div class="quadrant" data-q="Ui">
+              <div class="qhead">🎯 Important & Pas urgent</div>
+              <div class="qdrop" id="q-Ui" data-accept="Ui"></div>
+            </div>
+            <div class="quadrant" data-q="ui">
+              <div class="qhead">🌱 Ni urgent ni important</div>
+              <div class="qdrop" id="q-ui" data-accept="ui"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lists">
+        <div class="card">
+          <h3>🧱 Matériaux manquants</h3>
+          <div class="body" id="missingList"></div>
+        </div>
+        <div class="card">
+          <h3>📋 Backlog / Reste à faire</h3>
+          <div class="body" id="backlog"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="card">
+        <h3>Vue calendrier (prochaines échéances)</h3>
+        <div class="body" id="upcoming"></div>
+      </div>
+      <div class="card">
+        <h3>Stats rapides</h3>
+        <div class="body" id="stats"></div>
+      </div>
+      <div class="card">
+        <h3>Aide & Conseils</h3>
+        <div class="body small">
+          <p>• Glissez-déposez les cartes entre les quadrants pour changer Urgent/Important.</p>
+          <p>• Cliquez sur un titre pour éditer. Double-cliquez pour cocher comme « terminé ».</p>
+          <p>• « Exporter JSON » pour sauvegarder. « Importer » pour charger.
+            « Copier lien partage » encode les données dans l’URL (pratique mais limité si très volumineux).</p>
+          <p class="hint">Vos données sont stockées localement dans ce navigateur (localStorage). Partagez par lien ou fichier pour synchroniser avec la famille.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <dialog id="dlg">
+    <form id="taskForm" method="dialog">
+      <h3 id="dlgTitle">Nouvelle tâche</h3>
+      <input type="hidden" id="taskId" />
+      <label for="tTitle">Titre *</label>
+      <input id="tTitle" required placeholder="Ex: Peindre le couloir" />
+      <div class="grid-2">
+        <div>
+          <label for="tAssignee">Personne</label>
+          <input id="tAssignee" placeholder="Ex: Papa, Steven…" />
+        </div>
+        <div>
+          <label for="tPlace">Lieu</label>
+          <input id="tPlace" placeholder="Ex: Salon, Jardin…" />
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label for="tDue">Échéance</label>
+          <input id="tDue" type="date" />
+        </div>
+        <div>
+          <label>Priorité</label>
+          <div class="row">
+            <label class="pill"><input type="checkbox" id="tUrgent" /> Urgent</label>
+            <label class="pill"><input type="checkbox" id="tImportant" /> Important</label>
+          </div>
+        </div>
+      </div>
+      <label for="tMaterials">Matériaux manquants (séparés par des virgules)</label>
+      <input id="tMaterials" placeholder="Ex: ruban de masquage, vis 4x30…" />
+      <label for="tNotes">Notes</label>
+      <textarea id="tNotes" placeholder="Détails, dimensions, liens…"></textarea>
+      <div class="footer">
+        <button type="button" id="btnDelete" class="danger" style="margin-right:auto;display:none">Supprimer</button>
+        <button type="button" id="btnCancel">Annuler</button>
+        <button class="primary" id="btnSave">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="taskTpl">
+    <div class="task" draggable="true">
+      <h4 class="t-title"></h4>
+      <div class="meta"></div>
+      <div class="small" data-notes></div>
+    </div>
+  </template>
+
+  <script>
+  // --- Simple store ---
+  const STORE_KEY = 'famworks_v1';
+  let state = { tasks: [] };
+
+  function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
+
+  function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); render(); }
+  function load(){
+    // 1) Try URL ?data=
+    const u = new URL(location.href);
+    const enc = u.searchParams.get('data');
+    if(enc){
+      try{
+        const json = decodeURIComponent(atob(enc));
+        state = JSON.parse(json);
+        history.replaceState(null, '', location.pathname); // clean url
+        save(); // persist locally too
+        return;
+      }catch(e){ console.warn('Import URL invalide', e); }
+    }
+    // 2) Fallback localStorage
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ try{ state = JSON.parse(raw); }catch{ state = {tasks:[]} } }
+    render();
+  }
+
+  // --- CRUD ---
+  function upsert(task){
+    const idx = state.tasks.findIndex(t=>t.id===task.id);
+    if(idx>-1) state.tasks[idx]=task; else state.tasks.push(task);
+    save();
+  }
+  function removeTask(id){ state.tasks = state.tasks.filter(t=>t.id!==id); save(); }
+
+  // --- UI helpers ---
+  const el = sel => document.querySelector(sel);
+  const els = sel => Array.from(document.querySelectorAll(sel));
+  const fmtDate = d => d? new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',year:'numeric',month:'short',day:'numeric'}) : '';
+
+  function quadrantOf(t){
+    const u = !!t.urgent, i = !!t.important;
+    return (u&&i)?'UI':(u&&!i)?'uI':(!u&&i)?'Ui':'ui';
+  }
+
+  function render(){
+    // Filters
+    const q = el('#search').value.trim().toLowerCase();
+    const ass = el('#filterAssignee').value;
+    const place = el('#filterPlace').value.trim().toLowerCase();
+
+    // Quadrants
+    const buckets = { UI:[], uI:[], Ui:[], ui:[] };
+    for(const t of state.tasks){
+      if(t.done) continue; // done are not shown here
+      const hay = [t.title,t.assignee,t.place,(t.materials||[]).join(','),t.notes].join(' ').toLowerCase();
+      if(q && !hay.includes(q)) continue;
+      if(ass && t.assignee!==ass) continue;
+      if(place && !(t.place||'').toLowerCase().includes(place)) continue;
+      buckets[quadrantOf(t)].push(t);
+    }
+    for(const key of Object.keys(buckets)){
+      const zone = el('#q-'+key); zone.innerHTML='';
+      if(!buckets[key].length){ zone.innerHTML = '<div class="empty">Aucune tâche</div>'; continue; }
+      for(const t of buckets[key]) zone.append(renderTaskCard(t));
+    }
+
+    // Missing materials
+    const missing = {};
+    for(const t of state.tasks){
+      (t.materials||[]).forEach(m=>{ const k=m.trim(); if(!k) return; missing[k]=(missing[k]||[]).concat([t.title]); });
+    }
+    const missEl = el('#missingList');
+    missEl.innerHTML = Object.keys(missing).length ? '' : '<div class="empty">Rien à l\'heure actuelle</div>';
+    for(const k of Object.keys(missing).sort()){
+      const div=document.createElement('div');
+      div.className='row';
+      div.innerHTML = `<span class="badge materials">${k}</span><span class="small" style="opacity:.8">→ ${missing[k].join(', ')}</span>`;
+      missEl.append(div);
+    }
+
+    // Backlog (done)
+    const done = state.tasks.filter(t=>t.done).sort((a,b)=> (b.doneAt||0)-(a.doneAt||0));
+    const backlog = el('#backlog'); backlog.innerHTML='';
+    if(!done.length) backlog.innerHTML = '<div class="empty">Rien pour l\'instant</div>';
+    for(const t of done.slice(0,20)){
+      const d=document.createElement('div'); d.className='row';
+      d.innerHTML = `<span class="badge">✅</span><span>${t.title}</span><span class="small" style="opacity:.7">(${fmtDate(new Date(t.doneAt).toISOString().slice(0,10))})</span>`;
+      backlog.append(d);
+    }
+
+    // Upcoming
+    const upcoming = state.tasks.filter(t=>t.due && !t.done).sort((a,b)=> a.due.localeCompare(b.due));
+    const up = el('#upcoming'); up.innerHTML='';
+    if(!upcoming.length) up.innerHTML = '<div class="empty">Aucune échéance</div>';
+    for(const t of upcoming.slice(0,10)){
+      const line=document.createElement('div'); line.className='row';
+      line.innerHTML = `<span class="badge due">${fmtDate(t.due)}</span><span>${t.title}</span><span class="small" style="opacity:.7">${t.place||''}</span>`;
+      up.append(line);
+    }
+
+    // Stats
+    const sEl = el('#stats');
+    const total = state.tasks.length;
+    const open = state.tasks.filter(t=>!t.done).length;
+    const byAss = Object.groupBy ? Object.groupBy(state.tasks.filter(t=>!t.done), t=>t.assignee||'(non assigné)') : state.tasks.filter(t=>!t.done).reduce((acc,t)=>{const k=t.assignee||'(non assigné)';(acc[k]=acc[k]||[]).push(t);return acc},{});
+    sEl.innerHTML = `<div class="row"><span class="pill">Total: ${total}</span><span class="pill">Ouvertes: ${open}</span></div>`;
+    for(const [k,arr] of Object.entries(byAss)){
+      const div=document.createElement('div'); div.className='row';
+      div.innerHTML = `<span class="pill">👤 ${k}</span><span class="pill">${arr.length} tâche(s)</span>`;
+      sEl.append(div);
+    }
+
+    // Assignee filter options
+    const select = el('#filterAssignee');
+    const set = new Set(state.tasks.map(t=>t.assignee).filter(Boolean));
+    const val = select.value;
+    select.innerHTML = '<option value="">Filtrer: personne</option>' + Array.from(set).sort().map(a=>`<option ${a===val?'selected':''} value="${a}">${a}</option>`).join('');
+
+    // Enable DnD
+    enableDnD();
+  }
+
+  function renderTaskCard(t){
+    const tpl = el('#taskTpl');
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.dataset.id = t.id;
+    node.querySelector('.t-title').textContent = t.title + (t.place?` · ${t.place}`:'');
+    const meta=node.querySelector('.meta');
+    meta.innerHTML='';
+    if(t.assignee) meta.append(badge('👤 '+t.assignee, 'assignee'));
+    if(t.due) meta.append(badge('📅 '+fmtDate(t.due),'due'));
+    if(t.materials?.length) meta.append(badge('🧱 '+t.materials.join(', '),'materials'));
+    const notes = node.querySelector('[data-notes]');
+    notes.textContent = t.notes||'';
+
+    // interactions
+    node.addEventListener('click', ()=> editTask(t.id));
+    node.addEventListener('dblclick', (e)=>{ e.stopPropagation(); toggleDone(t.id);});
+
+    return node;
+  }
+  function badge(text, cls){ const s=document.createElement('span'); s.className='badge '+cls; s.textContent=text; return s; }
+
+  function enableDnD(){
+    els('.task').forEach(card=>{
+      card.addEventListener('dragstart',()=>{ card.classList.add('dragging'); });
+      card.addEventListener('dragend',()=>{ card.classList.remove('dragging'); });
+    });
+    els('.qdrop').forEach(zone=>{
+      zone.addEventListener('dragover', e=>{ e.preventDefault(); });
+      zone.addEventListener('drop', e=>{
+        e.preventDefault();
+        const id = document.querySelector('.task.dragging')?.dataset.id; if(!id) return;
+        const t = state.tasks.find(x=>x.id===id); if(!t) return;
+        const target = zone.dataset.accept; // UI, uI, Ui, ui
+        t.urgent = target.includes('u');
+        t.important = target.includes('I');
+        upsert(t);
+      });
+    });
+  }
+
+  // --- Dialog & form ---
+  const dlg = el('#dlg');
+  el('#btnNew').addEventListener('click', ()=>{ openForm(); });
+  el('#btnCancel').addEventListener('click', ()=> dlg.close());
+  el('#btnSave').addEventListener('click', (e)=>{ e.preventDefault(); saveForm(); });
+  el('#btnDelete').addEventListener('click', ()=>{ const id=el('#taskId').value; if(id){ removeTask(id); dlg.close(); }});
+
+  function openForm(task){
+    el('#taskForm').reset();
+    el('#taskId').value = task?.id || '';
+    el('#dlgTitle').textContent = task? 'Modifier la tâche' : 'Nouvelle tâche';
+    el('#btnDelete').style.display = task? 'inline-flex':'none';
+    if(task){
+      el('#tTitle').value = task.title||'';
+      el('#tAssignee').value = task.assignee||'';
+      el('#tPlace').value = task.place||'';
+      el('#tDue').value = task.due||'';
+      el('#tUrgent').checked = !!task.urgent;
+      el('#tImportant').checked = !!task.important;
+      el('#tMaterials').value = (task.materials||[]).join(', ');
+      el('#tNotes').value = task.notes||'';
+    }
+    dlg.showModal();
+  }
+
+  function saveForm(){
+    const id = el('#taskId').value || uid();
+    const task = {
+      id,
+      title: el('#tTitle').value.trim(),
+      assignee: el('#tAssignee').value.trim(),
+      place: el('#tPlace').value.trim(),
+      due: el('#tDue').value || null,
+      urgent: el('#tUrgent').checked,
+      important: el('#tImportant').checked,
+      materials: el('#tMaterials').value.split(',').map(s=>s.trim()).filter(Boolean),
+      notes: el('#tNotes').value.trim(),
+      done: false,
+    };
+    if(!task.title){ alert('Le titre est obligatoire'); return; }
+    upsert(task); dlg.close();
+  }
+
+  function editTask(id){ const t=state.tasks.find(x=>x.id===id); if(t) openForm(t); }
+  function toggleDone(id){ const t=state.tasks.find(x=>x.id===id); if(!t) return; t.done=!t.done; t.doneAt = t.done? Date.now(): null; upsert(t); }
+
+  // --- Filters & tools ---
+  el('#search').addEventListener('input', render);
+  el('#filterAssignee').addEventListener('change', render);
+  el('#filterPlace').addEventListener('input', render);
+
+  el('#btnExport').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download='travaux-familiaux.json'; a.click(); URL.revokeObjectURL(a.href);
+  });
+
+  el('#importFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const rd = new FileReader();
+    rd.onload = () => { try{ state = JSON.parse(rd.result); save(); }catch{ alert('Fichier invalide'); } };
+    rd.readAsText(file);
+  });
+
+  el('#btnShare').addEventListener('click', ()=>{
+    try{
+      const enc = btoa(encodeURIComponent(JSON.stringify(state)));
+      const url = location.origin + location.pathname + '?data=' + enc;
+      navigator.clipboard.writeText(url).then(()=> alert('Lien copié dans le presse-papiers !'));
+    }catch(e){ alert('Impossible de générer le lien. Exportez le JSON à la place.'); }
+  });
+
+  el('#btnClear').addEventListener('click', ()=>{
+    if(confirm('Supprimer les données locales ? (Les exports/imports restent possibles)')){
+      localStorage.removeItem(STORE_KEY); state={tasks:[]}; render();
+    }
+  });
+
+  // Seed example (first run)
+  function seedIfEmpty(){
+    if(state.tasks.length) return;
+    const now = new Date();
+    const iso = d=>d.toISOString().slice(0,10);
+    const d1=new Date(now.getTime()+86400000*2), d2=new Date(now.getTime()+86400000*7);
+    state.tasks = [
+      {id:uid(), title:'Peindre le couloir', assignee:'Steven', place:'Étage', due:iso(d2), urgent:false, important:true, materials:['ruban','rouleau'], notes:'Sous-couche OK', done:false},
+      {id:uid(), title:'Fixer étagère IKEA', assignee:'Papa', place:'Salon', due:iso(d1), urgent:true, important:true, materials:['vis 4x30','chevilles'], notes:'Perceuse dans le garage', done:false},
+      {id:uid(), title:'Mesurer plinthes', assignee:'Maman', place:'Chambre', due:null, urgent:false, important:false, materials:[], notes:'', done:false},
+      {id:uid(), title:'Acheter ampoules GU10', assignee:'Steven', place:'Cuisine', due:null, urgent:true, important:false, materials:['GU10 x6'], notes:'Blanc chaud', done:false}
+    ];
+    save();
+  }
+
+  // init
+  load(); seedIfEmpty();
+  </script>
+</body>
+</html>
